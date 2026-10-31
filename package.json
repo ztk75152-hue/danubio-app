@@ -1,0 +1,49 @@
+{
+  "name": "danubio-app",
+  "version": "1.0.1",
+  "description": "Danubio App",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder"
+  },
+  "devDependencies": {
+    "electron": "^45.1.0",
+    "electron-builder": "^26.18.0"
+  },
+  "build": {
+    "appId": "com.danubio.app",
+    "productName": "Danubio App",
+    "directories": {
+      "buildResources": ".",
+      "output": "dist-danubio-haxzero-fondo-fix-v4"
+    },
+    "files": [
+      "main.js",
+      "index.html",
+      "package.json",
+      "danubio.png",
+      "icon.ico.ico",
+      "icon-256.png",
+      "preload.js",
+      "extension/**/*"
+    ],
+    "win": {
+      "icon": "icon-256.png",
+      "target": "nsis"
+    },
+    "asarUnpack": [
+      "extension/**/*"
+    ],
+    "publish": [
+      {
+        "provider": "github",
+        "repo": "danubio-app",
+        "owner": "ztk75152-hue"
+      }
+    ]
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.11"
+  }
+}

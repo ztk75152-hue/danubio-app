@@ -1,0 +1,44 @@
+{
+  "manifest_version": 3,
+  "name": "Danubio HaxBall",
+  "version": "1.0.0",
+  "description": "Módulos visuales locales para Danubio App",
+  "permissions": [
+    "storage",
+    "tabs",
+    "scripting"
+  ],
+  "host_permissions": [
+    "https://www.haxball.com/*",
+    "https://html5.haxball.com/*"
+  ],
+  "content_scripts": [
+    {
+      "run_at": "document_start",
+      "js": [
+        "runtime.js"
+      ],
+      "matches": [
+        "https://www.haxball.com/*",
+        "https://html5.haxball.com/*"
+      ],
+      "all_frames": true
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "danubio.png",
+        "extensions/*.js",
+        "assets/balls/*",
+        "assets/balls/*/*",
+        "assets/fields/*",
+        "assets/fields/*/*"
+      ],
+      "matches": [
+        "https://www.haxball.com/*",
+        "https://html5.haxball.com/*"
+      ]
+    }
+  ]
+}
