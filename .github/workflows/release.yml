@@ -1,0 +1,65 @@
+name: Build and publish Danubio App
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build ${{ matrix.platform }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows
+            os: windows-latest
+            build_args: --win nsis
+          - platform: linux
+            os: ubuntu-22.04
+            build_args: --linux AppImage
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Build app
+        run: npx electron-builder ${{ matrix.build_args }} --publish never
+      - name: Upload build files
+        uses: actions/upload-artifact@v4
+        with:
+          name: danubio-${{ matrix.platform }}
+          if-no-files-found: error
+          path: |
+            dist-danubio-haxzero-fondo-fix-v4/Danubio-App-Setup-*.exe
+            dist-danubio-haxzero-fondo-fix-v4/Danubio-App-Setup-*.exe.blockmap
+            dist-danubio-haxzero-fondo-fix-v4/Danubio-App-*.AppImage
+            dist-danubio-haxzero-fondo-fix-v4/latest.yml
+            dist-danubio-haxzero-fondo-fix-v4/latest-linux.yml
+
+  publish:
+    name: Publish GitHub release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: release-files
+          merge-multiple: true
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Danubio App ${{ github.ref_name }}
+          files: release-files/**
+          fail_on_unmatched_files: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -6,6 +6,7 @@ const fs = require("fs");
 const settingsPath = path.join(app.getPath("userData"), "danubio-settings.json");
 const imageTypes = { ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp", ".gif": "image/gif", ".bmp": "image/bmp" };
 const defaultTheme = { name: "Mi tema", background: "#111111", panel: "#242424", text: "#f5f5f5", accent: "#ffffff" };
+let danubioWindow = null;
 function sanitizeTheme(value) { if (!value || typeof value !== "object") return null; const color=(v,f)=>typeof v==="string" && /^#[0-9a-f]{6}$/i.test(v) ? v : f; return { name: typeof value.name==="string" ? value.name.trim().slice(0,24)||"Mi tema" : "Mi tema", background:color(value.background,defaultTheme.background), panel:color(value.panel,defaultTheme.panel), text:color(value.text,defaultTheme.text), accent:color(value.accent,defaultTheme.accent) }; }
 
 function readSettings() {
@@ -83,7 +84,7 @@ function createWindow() {
         width: 1200,
         height: 800,
         title: "Danubio App",
-        icon: path.join(__dirname, "icon.ico.ico"),
+        icon: path.join(__dirname, "danubio.png"),
         autoHideMenuBar: true,
         webPreferences: {
             nodeIntegration: false,
@@ -93,7 +94,18 @@ function createWindow() {
     });
 
     win.loadFile(path.join(__dirname, "index.html"));
+    win.on("page-title-updated", (event) => {
+        event.preventDefault();
+        win.setTitle("Danubio App");
+    });
+    danubioWindow = win;
+    win.on("closed", () => { if (danubioWindow === win) danubioWindow = null; });
     applyDanubioAppearance(win);
+}
+ipcMain.handle("danubio:update-download", () => autoUpdater.downloadUpdate());
+ipcMain.handle("danubio:update-install", () => autoUpdater.quitAndInstall());
+function announceUpdate(status) {
+    if (danubioWindow && !danubioWindow.isDestroyed()) danubioWindow.webContents.send("danubio:update-status", status);
 }
 function getBackgroundRules(crestData) {
     const crest = "html{background-color:#050505!important;background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.12) 0 2px,transparent 2px 26px),radial-gradient(ellipse at 50% 50%,rgba(255,255,255,.08),rgba(0,0,0,0) 68%),linear-gradient(rgba(5,5,5,.58),rgba(5,5,5,.58)),url(\"data:image/png;base64," + crestData + "\")!important;background-position:center,center,center,center!important;background-repeat:repeat,no-repeat,no-repeat,no-repeat!important;background-size:auto,cover,cover,min(38vw,420px)!important;background-attachment:fixed,fixed,fixed,fixed!important}";
@@ -131,14 +143,10 @@ function applyDanubioAppearance(win) {
 app.whenReady().then(async () => {
     if (app.isPackaged) {
         autoUpdater.autoDownload = false;
-        autoUpdater.on("update-available", async (info) => {
-            const result = await dialog.showMessageBox({ type: "info", title: "Actualización disponible", message: "Hay una nueva versión de Danubio (" + info.version + "). ¿Querés descargarla?", buttons: ["Descargar", "Más tarde"], defaultId: 0, cancelId: 1 });
-            if (result.response === 0) autoUpdater.downloadUpdate();
-        });
-        autoUpdater.on("update-downloaded", async () => {
-            const result = await dialog.showMessageBox({ type: "info", title: "Actualización lista", message: "Danubio se reiniciará para instalar la actualización.", buttons: ["Reiniciar ahora", "Al cerrar"], defaultId: 0, cancelId: 1 });
-            if (result.response === 0) autoUpdater.quitAndInstall();
-        });
+        autoUpdater.on("update-available", (info) => announceUpdate({ state: "available", version: info.version }));
+        autoUpdater.on("download-progress", (progress) => announceUpdate({ state: "downloading", percent: Math.round(progress.percent) }));
+        autoUpdater.on("update-downloaded", () => announceUpdate({ state: "downloaded" }));
+        autoUpdater.on("update-not-available", () => announceUpdate({ state: "current" }));
         autoUpdater.checkForUpdates().catch((error) => console.warn("No se pudo comprobar actualizaciones:", error.message));
     }
     const extensionPath = app.isPackaged

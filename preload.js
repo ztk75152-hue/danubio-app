@@ -7,3 +7,12 @@ contextBridge.exposeInMainWorld("danubioSettings", {
     chooseBackground: () => ipcRenderer.invoke("danubio:choose-background"),
     clearBackground: () => ipcRenderer.invoke("danubio:clear-background")
 });
+
+contextBridge.exposeInMainWorld("danubioUpdater", {
+    onStatus: (callback) => {
+        if (typeof callback !== "function") return;
+        ipcRenderer.on("danubio:update-status", (_event, status) => callback(status));
+    },
+    download: () => ipcRenderer.invoke("danubio:update-download"),
+    install: () => ipcRenderer.invoke("danubio:update-install")
+});

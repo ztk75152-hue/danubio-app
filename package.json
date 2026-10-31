@@ -1,11 +1,12 @@
 {
   "name": "danubio-app",
-  "version": "1.0.1",
+  "version": "1.0.4",
   "description": "Danubio App",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "dist": "electron-builder"
+    "dist": "electron-builder --win nsis",
+    "dist:linux": "electron-builder --linux AppImage"
   },
   "devDependencies": {
     "electron": "^45.1.0",
@@ -29,8 +30,15 @@
       "extension/**/*"
     ],
     "win": {
-      "icon": "icon-256.png",
+      "icon": "danubio.png",
+      "artifactName": "Danubio-App-Setup-${version}.${ext}",
       "target": "nsis"
+    },
+    "linux": {
+      "icon": "danubio.png",
+      "category": "Game",
+      "artifactName": "Danubio-App-${version}.${ext}",
+      "target": ["AppImage"]
     },
     "asarUnpack": [
       "extension/**/*"

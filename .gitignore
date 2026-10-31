@@ -5,3 +5,8 @@ dist*/
 *.pre-haxnew
 .env
 *.log
+.electron-builder-cache/
+.electron-cache/
+.local-appdata/
+.tmp/
+archivos-para-subir-GitHub-*/

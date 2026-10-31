@@ -1,63 +1,9 @@
 <!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Danubio App</title>
-    <style>
-        * { box-sizing: border-box; }
-        html, body { width: 100%; height: 100%; margin: 0; }
-        body { background: #000; color: #fff; display: flex; align-items: center; justify-content: center; overflow: hidden; font-family: Arial, sans-serif; position: relative; isolation: isolate; }
-        .escudo { position: fixed; width: 430px; height: 430px; max-width: 80vw; max-height: 80vh; object-fit: contain; opacity: .18; top: 50%; left: 50%; transform: translate(-50%,-50%); z-index: 0; pointer-events: none; }
-        .menu { width: min(340px, 90vw); text-align: center; position: relative; z-index: 1; }
-        .menu[hidden] { display: none !important; }
-        h1 { font-size: 48px; letter-spacing: 9px; margin: 0 0 40px; }
-        h2 { font-size: 25px; letter-spacing: 1px; margin: 0 0 24px; }
-        button { display: block; width: 274px; max-width: 100%; padding: 16px 14px; margin: 14px auto; background: #000; color: #fff; border: 1px solid #fff; border-radius: 5px; font-size: 17px; letter-spacing: 2px; cursor: pointer; transition: background .2s, color .2s; }
-        button:hover { background: #fff; color: #000; }
-        .nick-input { display: block; width: 274px; max-width: 100%; padding: 14px; margin: 0 auto 18px; color: #fff; background: #111; border: 1px solid #888; border-radius: 5px; font-size: 15px; outline: none; }
-        .nick-input:focus { border-color: #fff; }
-        @media (max-width: 600px) { h1 { font-size: 38px; letter-spacing: 6px; margin-bottom: 32px; } .escudo { width: 320px; height: 320px; } }
-    </style>
-</head>
-<body>
-    <img class="escudo" src="danubio.png" alt="Escudo Danubio">
-    <main class="menu" id="main-menu">
-        <h1>DANUBIO</h1>
-        <button id="play-button" type="button">JUGAR</button>
-        <button id="exit-button" type="button">SALIR</button>
-    </main>
-    <main class="menu" id="nickname-menu" hidden>
-        <h2>ELEGÍ TU NICK</h2>
-        <input id="nick-input" class="nick-input" maxlength="25" placeholder="Tu nick de HaxBall" autocomplete="nickname" autofocus>
-        <button id="enter-button" type="button">ENTRAR</button>
-        <button id="back-button" type="button">VOLVER</button>
-    </main>
-    <script>
-        const mainMenu = document.getElementById("main-menu");
-        const nicknameMenu = document.getElementById("nickname-menu");
-        const nickInput = document.getElementById("nick-input");
-        async function openNickname() {
-            try {
-                const settings = await window.danubioSettings.get();
-                nickInput.value = settings.nickname || "";
-            } catch (_) {}
-            mainMenu.hidden = true;
-            nicknameMenu.hidden = false;
-            nickInput.focus();
-        }
-        async function enterGame() {
-            const nick = nickInput.value.trim().slice(0, 25);
-            try { await window.danubioSettings.update({ nickname: nick }); } catch (_) {}
-            const url = new URL("https://www.haxball.com/play");
-            if (nick) url.searchParams.set("danubioNick", nick);
-            window.location.href = url.toString();
-        }
-        document.getElementById("play-button").addEventListener("click", openNickname);
-        document.getElementById("exit-button").addEventListener("click", () => window.close());
-        document.getElementById("enter-button").addEventListener("click", enterGame);
-        document.getElementById("back-button").addEventListener("click", () => { nicknameMenu.hidden = true; mainMenu.hidden = false; });
-        nickInput.addEventListener("keydown", event => { if (event.key === "Enter") enterGame(); });
-    </script>
-</body>
-</html>
+<html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Danubio App</title><style>*{box-sizing:border-box}html,body{width:100%;height:100%;margin:0}body{background:#000;color:#fff;display:flex;align-items:center;justify-content:center;overflow:hidden;font-family:Arial,sans-serif;position:relative;isolation:isolate}.escudo{position:fixed;width:430px;height:430px;max-width:80vw;max-height:80vh;object-fit:contain;opacity:.18;top:50%;left:50%;transform:translate(-50%,-50%);z-index:0;pointer-events:none}.menu{width:min(340px,90vw);text-align:center;position:relative;z-index:1}h1{font-size:48px;letter-spacing:9px;margin:0 0 40px}button{display:block;width:274px;max-width:100%;padding:16px 14px;margin:14px auto;background:#000;color:#fff;border:1px solid #fff;border-radius:5px;font-size:17px;letter-spacing:2px;cursor:pointer;transition:background .2s,color .2s}button:hover{background:#fff;color:#000}#update-button{display:none}#update-status{min-height:18px;color:#bbb;font-size:12px}@media(max-width:600px){h1{font-size:38px;letter-spacing:6px;margin-bottom:32px}.escudo{width:320px;height:320px}}</style></head>
+<body><img class="escudo" src="danubio.png" alt="Escudo Danubio"><main class="menu" id="main-menu"><h1>DANUBIO</h1><button id="play-button" type="button">JUGAR</button><button id="update-button" type="button">ACTUALIZAR</button><p id="update-status" aria-live="polite"></p><button id="exit-button" type="button">SALIR</button></main>
+<script>
+const updateButton=document.getElementById("update-button");const updateStatus=document.getElementById("update-status");
+updateButton.addEventListener("click",async()=>{if(updateButton.dataset.state==="downloaded")return window.danubioUpdater.install();updateButton.disabled=true;updateStatus.textContent="Descargando actualización…";try{await window.danubioUpdater.download()}catch(_){updateButton.disabled=false;updateStatus.textContent="No se pudo descargar."}});
+window.danubioUpdater?.onStatus(status=>{if(status.state==="available"){updateButton.dataset.state="available";updateButton.textContent="ACTUALIZAR A "+status.version;updateButton.style.display="block";updateStatus.textContent="Hay una nueva versión disponible."}else if(status.state==="downloading"){updateButton.disabled=true;updateStatus.textContent="Descargando… "+status.percent+"%"}else if(status.state==="downloaded"){updateButton.disabled=false;updateButton.dataset.state="downloaded";updateButton.textContent="REINICIAR PARA ACTUALIZAR";updateStatus.textContent="Actualización lista."}});
+document.getElementById("play-button").addEventListener("click",()=>{window.location.href="https://www.haxball.com/play"});document.getElementById("exit-button").addEventListener("click",()=>window.close());
+</script></body></html>
