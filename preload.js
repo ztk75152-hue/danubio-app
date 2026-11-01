@@ -16,3 +16,13 @@ contextBridge.exposeInMainWorld("danubioUpdater", {
     download: () => ipcRenderer.invoke("danubio:update-download"),
     install: () => ipcRenderer.invoke("danubio:update-install")
 });
+
+contextBridge.exposeInMainWorld("danubioDiscord", {
+    getPresenceState: () => ipcRenderer.invoke("danubio:discord-presence-state"),
+    enablePresence: () => ipcRenderer.invoke("danubio:discord-presence-enable"),
+    disablePresence: () => ipcRenderer.invoke("danubio:discord-presence-disable"),
+    onPresenceStatus: (callback) => {
+        if (typeof callback !== "function") return;
+        ipcRenderer.on("danubio:discord-presence-status", (_event, status) => callback(status));
+    }
+});

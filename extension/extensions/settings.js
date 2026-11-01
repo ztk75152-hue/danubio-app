@@ -1404,6 +1404,10 @@
           tile.style.transform = "scale(1)";
         };
         tile.onclick = function() {
+          if (typeof opts.onClick === "function") {
+            opts.onClick(tile);
+            return;
+          }
           var mod = window[opts.globalName];
           if (mod && typeof mod.openPanel === "function") {
             mod.openPanel(doc);
@@ -1444,6 +1448,47 @@
         missingMsg: t("Scoreboard no está disponible (falta cargar scoreboard-panel.js)")
       });
       tilesRow.appendChild(sbTile);
+      function requestDiscordPresenceToggle() {
+        return new Promise(function(resolve) {
+          var requestId = "danubio-discord-" + Date.now() + "-" + Math.random().toString(36).slice(2);
+          var timer = setTimeout(function() {
+            doc.defaultView.removeEventListener("message", onReply);
+            resolve({ connected: false, reason: "unavailable" });
+          }, 8000);
+          function onReply(event) {
+            if (event.source !== window.top || event.data?.channel !== "danubio-discord-presence-result" || event.data.requestId !== requestId) return;
+            clearTimeout(timer);
+            doc.defaultView.removeEventListener("message", onReply);
+            resolve(event.data);
+          }
+          doc.defaultView.addEventListener("message", onReply);
+          window.top.postMessage({ channel: "danubio-discord-presence", requestId: requestId }, "*");
+        });
+      }
+      var discordTile = buildBigTile({
+        hook: "discord-tile",
+        iconSvg: '<svg width="24" height="24" viewBox="0 0 24 24" fill="#5865F2"><path d="M19.27 5.33A18.2 18.2 0 0 0 14.8 3.95l-.55 1.13a16.9 16.9 0 0 0-4.5 0L9.2 3.95a18.1 18.1 0 0 0-4.47 1.38C1.9 9.5 1.13 13.56 1.51 17.56a18.1 18.1 0 0 0 5.48 2.76l1.18-1.93a11.8 11.8 0 0 1-1.86-.9l.46-.36a12.9 12.9 0 0 0 11.04 0l.46.36a11.8 11.8 0 0 1-1.86.9l1.18 1.93a18.1 18.1 0 0 0 5.48-2.76c.45-4.63-.77-8.65-3.8-12.23ZM8.73 15.67c-1.07 0-1.95-.98-1.95-2.19s.86-2.2 1.95-2.2 1.97.99 1.95 2.2c0 1.2-.86 2.19-1.95 2.19Zm6.54 0c-1.08 0-1.95-.98-1.95-2.19s.86-2.2 1.95-2.2 1.96.99 1.95 2.2c0 1.2-.86 2.19-1.95 2.19Z"/></svg>',
+        title: t("Vincular con Discord"),
+        desc: t("Mostrá en Discord que estás jugando a Danubio App"),
+        onClick: function(tile) {
+          if (tile.dataset.busy === "true") return;
+          tile.dataset.busy = "true";
+          requestDiscordPresenceToggle().then(function(result) {
+            if (result.wasConnected) {
+              if (window.showToast) window.showToast(t("Discord desvinculado."), "success");
+            } else if (result.connected) {
+              if (window.showToast) window.showToast(t("Conectado a Discord. Tu actividad ya se muestra."), "success");
+            } else if (result.reason === "open-discord") {
+              if (window.showToast) window.showToast(t("Abrí Discord para escritorio e intentá de nuevo."), "error");
+            } else if (window.showToast) {
+              window.showToast(t("No se pudo conectar con Discord."), "error");
+            }
+          }).finally(function() {
+            tile.dataset.busy = "false";
+          });
+        }
+      });
+      tilesRow.appendChild(discordTile);
       var ksTile = buildBigTile({
         hook: "ks-tile",
         iconSvg: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#c9a227" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="6.5" width="19" height="12" rx="2"/><path d="M7 11v1M11 11v1M15 11v1M9 15h6"/></svg>',

@@ -1,6 +1,6 @@
 {
   "name": "danubio-app",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "Danubio App",
   "main": "main.js",
   "scripts": {
@@ -38,7 +38,9 @@
       "icon": "danubio.png",
       "category": "Game",
       "artifactName": "Danubio-App-${version}.${ext}",
-      "target": ["AppImage"]
+      "target": [
+        "AppImage"
+      ]
     },
     "asarUnpack": [
       "extension/**/*"
@@ -52,6 +54,7 @@
     ]
   },
   "dependencies": {
+    "@xhayper/discord-rpc": "^1.5.1",
     "electron-updater": "^6.8.11"
   }
 }

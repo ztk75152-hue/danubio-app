@@ -1,12 +1,16 @@
 const { app, BrowserWindow, webFrameMain, ipcMain, session, dialog } = require("electron");
 const { autoUpdater } = require('electron-updater');
+const { Client: DiscordRpcClient } = require('@xhayper/discord-rpc');
 const path = require("path");
 const fs = require("fs");
 
+const discordApplicationId = "1566217197196419212";
 const settingsPath = path.join(app.getPath("userData"), "danubio-settings.json");
 const imageTypes = { ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp", ".gif": "image/gif", ".bmp": "image/bmp" };
 const defaultTheme = { name: "Mi tema", background: "#111111", panel: "#242424", text: "#f5f5f5", accent: "#ffffff" };
 let danubioWindow = null;
+let discordPresenceClient = null;
+let closingDiscordPresence = false;
 function sanitizeTheme(value) { if (!value || typeof value !== "object") return null; const color=(v,f)=>typeof v==="string" && /^#[0-9a-f]{6}$/i.test(v) ? v : f; return { name: typeof value.name==="string" ? value.name.trim().slice(0,24)||"Mi tema" : "Mi tema", background:color(value.background,defaultTheme.background), panel:color(value.panel,defaultTheme.panel), text:color(value.text,defaultTheme.text), accent:color(value.accent,defaultTheme.accent) }; }
 
 function readSettings() {
@@ -20,10 +24,11 @@ function readSettings() {
             backgroundMode: ["crest", "monochrome", "plain", "custom"].includes(stored.backgroundMode) ? stored.backgroundMode : "crest",
             backgroundImagePath: imageIsLocal ? imagePath : null,
             nickname: typeof stored.nickname === "string" ? stored.nickname.slice(0, 25) : "",
+            discordPresenceEnabled: stored.discordPresenceEnabled === true,
             customTheme: sanitizeTheme(stored.customTheme)
         };
     } catch {
-        return { showFps: true, backgroundMode: "crest", backgroundImagePath: null, nickname: "", customTheme: null };
+        return { showFps: true, backgroundMode: "crest", backgroundImagePath: null, nickname: "", discordPresenceEnabled: false, customTheme: null };
     }
 }
 const userSettings = readSettings();
@@ -38,6 +43,7 @@ function publicSettings() {
         backgroundMode: userSettings.backgroundMode,
         backgroundImageName: userSettings.backgroundImagePath ? path.basename(userSettings.backgroundImagePath) : "",
         nickname: userSettings.nickname,
+        discordPresenceEnabled: userSettings.discordPresenceEnabled,
         customTheme: userSettings.customTheme
     };
 }
@@ -78,6 +84,66 @@ ipcMain.handle("danubio:clear-background", () => {
     saveSettings();
     return publicSettings();
 });
+
+async function enableDiscordPresence() {
+    if (discordPresenceClient?.isConnected) {
+        await discordPresenceClient.user?.setActivity({
+            name: "Danubio App",
+            details: "Jugando a Danubio App",
+            state: "HaxBall",
+            startTimestamp: Date.now()
+        });
+        userSettings.discordPresenceEnabled = true;
+        saveSettings();
+        return { connected: true };
+    }
+
+    const client = new DiscordRpcClient({ clientId: discordApplicationId });
+    discordPresenceClient = client;
+    client.on("disconnected", () => {
+        if (discordPresenceClient !== client) return;
+        discordPresenceClient = null;
+        userSettings.discordPresenceEnabled = false;
+        saveSettings();
+        announceDiscordPresence({ state: "unavailable" });
+    });
+    try {
+        await client.login();
+        await client.user?.setActivity({
+            name: "Danubio App",
+            details: "Jugando a Danubio App",
+            state: "HaxBall",
+            startTimestamp: Date.now()
+        });
+        userSettings.discordPresenceEnabled = true;
+        saveSettings();
+        return { connected: true };
+    } catch (error) {
+        if (discordPresenceClient === client) discordPresenceClient = null;
+        await client.destroy().catch(() => {});
+        console.warn("No se pudo conectar la presencia de Discord:", error.message);
+        return { connected: false, reason: "open-discord" };
+    }
+}
+
+async function disableDiscordPresence() {
+    const client = discordPresenceClient;
+    discordPresenceClient = null;
+    userSettings.discordPresenceEnabled = false;
+    saveSettings();
+    if (client) {
+        try { await client.user?.clearActivity(); } catch {}
+        try { await client.destroy(); } catch {}
+    }
+    return { connected: false };
+}
+
+ipcMain.handle("danubio:discord-presence-enable", enableDiscordPresence);
+ipcMain.handle("danubio:discord-presence-disable", disableDiscordPresence);
+ipcMain.handle("danubio:discord-presence-state", () => ({
+    enabled: userSettings.discordPresenceEnabled,
+    connected: Boolean(discordPresenceClient?.isConnected)
+}));
 
 function createWindow() {
     const win = new BrowserWindow({
@@ -159,6 +225,27 @@ app.whenReady().then(async () => {
         console.error("No se pudo cargar la extensión visual de Danubio:", error);
     }
     createWindow();
+    if (userSettings.discordPresenceEnabled) {
+        enableDiscordPresence().then((result) => {
+            announceDiscordPresence(result.connected ? { state: "connected" } : { state: "unavailable" });
+        });
+    }
+});
+
+function announceDiscordPresence(status) {
+    if (danubioWindow && !danubioWindow.isDestroyed()) danubioWindow.webContents.send("danubio:discord-presence-status", status);
+}
+
+app.on("before-quit", (event) => {
+    if (closingDiscordPresence || !discordPresenceClient) return;
+    event.preventDefault();
+    closingDiscordPresence = true;
+    const client = discordPresenceClient;
+    discordPresenceClient = null;
+    Promise.resolve(client.user?.clearActivity())
+        .catch(() => {})
+        .then(() => client.destroy().catch(() => {}))
+        .finally(() => app.quit());
 });
 
 app.on("window-all-closed", () => {

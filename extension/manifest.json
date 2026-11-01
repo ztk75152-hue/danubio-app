@@ -16,6 +16,18 @@
     {
       "run_at": "document_start",
       "js": [
+        "page-bootstrap.js"
+      ],
+      "matches": [
+        "https://www.haxball.com/*",
+        "https://html5.haxball.com/*"
+      ],
+      "all_frames": true,
+      "world": "MAIN"
+    },
+    {
+      "run_at": "document_start",
+      "js": [
         "runtime.js"
       ],
       "matches": [

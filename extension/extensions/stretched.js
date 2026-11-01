@@ -74,6 +74,7 @@
     } catch (e) {}
   }
   var _lastCanvas = null;
+  var _isApplyingStretch = false;
   function overrideBackingStore(canvas) {
     if (!canvas || canvas.__hxdResPatched) return;
     var widthDesc = Object.getOwnPropertyDescriptor(HTMLCanvasElement.prototype, "width");
@@ -103,18 +104,30 @@
   }
   function forceReapply(canvas) {
     var res = getSavedRes();
+    var dimensionsChanged = false;
     if (res.width > 0 && res.height > 0) {
-      canvas.width = res.width;
-      canvas.height = res.height;
+      if (canvas.width !== res.width) {
+        canvas.width = res.width;
+        dimensionsChanged = true;
+      }
+      if (canvas.height !== res.height) {
+        canvas.height = res.height;
+        dimensionsChanged = true;
+      }
     }
     try {
       window.__hxdInvalidateCanvas = true;
     } catch (e) {}
-    try {
-      window.dispatchEvent(new Event("resize"));
-    } catch (e2) {}
+    if (dimensionsChanged) {
+      try {
+        window.dispatchEvent(new Event("resize"));
+      } catch (e2) {}
+    }
   }
   function applyStretch() {
+    if (_isApplyingStretch) return;
+    _isApplyingStretch = true;
+    try {
     var res = getSavedRes();
     var canvas = _lastCanvas || document.querySelector("canvas");
     if (!canvas) return;
@@ -148,6 +161,9 @@
       }
     }
     forceReapply(canvas);
+    } finally {
+      _isApplyingStretch = false;
+    }
   }
   function buildRow(videoSec) {
     if (document.getElementById("stretched-res-row")) return;

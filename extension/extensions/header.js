@@ -19,7 +19,26 @@
   window.addEventListener("keydown", onF2, true);
   if (Injector.isMainFrame()) {
     window.addEventListener("message", e => {
-      if (e.data?.action === "FORCE_TOGGLE_UI") window.dispatchEvent(new CustomEvent("toggle-ult-ui"));
+      if (e.data?.action === "FORCE_TOGGLE_UI") {
+        window.dispatchEvent(new CustomEvent("toggle-ult-ui"));
+        return;
+      }
+      if (e.data?.channel !== "danubio-discord-presence" || !e.source) return;
+      const fromGameFrame = Array.from(document.querySelectorAll("iframe")).some(frame => frame.contentWindow === e.source);
+      if (!fromGameFrame) return;
+      const request = e.data;
+      const discord = window.danubioDiscord;
+      if (!discord || !request.requestId) {
+        e.source.postMessage({ channel: "danubio-discord-presence-result", requestId: request.requestId, connected: false, reason: "unavailable" }, e.origin);
+        return;
+      }
+      Promise.resolve(discord.getPresenceState()).then(state => {
+        return Promise.resolve(state.connected ? discord.disablePresence() : discord.enablePresence()).then(result => ({ ...result, wasConnected: state.connected }));
+      }).then(result => {
+        e.source.postMessage({ channel: "danubio-discord-presence-result", requestId: request.requestId, ...result }, e.origin);
+      }).catch(() => {
+        e.source.postMessage({ channel: "danubio-discord-presence-result", requestId: request.requestId, connected: false, reason: "unavailable" }, e.origin);
+      });
     });
   }
   if (!Injector.isMainFrame()) return;
